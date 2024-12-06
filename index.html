@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Explorer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f6f9;
+        }
+        .video-card {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .video-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center text-blue-600 mb-8">YouTube Video Explorer</h1>
+        
+        <div class="max-w-xl mx-auto mb-8">
+            <div class="flex">
+                <input 
+                    type="text" 
+                    id="channelIdInput" 
+                    placeholder="Enter YouTube Channel ID" 
+                    class="flex-grow px-4 py-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                <button 
+                    id="searchButton" 
+                    class="bg-blue-500 text-white px-6 py-2 rounded-r-lg hover:bg-blue-600 transition duration-300"
+                >
+                    Search Channel
+                </button>
+            </div>
+        </div>
+
+        <div class="flex justify-center space-x-4 mb-8">
+            <button 
+                id="fetchVideosButton" 
+                class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition duration-300"
+            >
+                Fetch Channel Videos
+            </button>
+            <button 
+                id="showStoredVideosButton" 
+                class="bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600 transition duration-300"
+            >
+                Show Stored Videos
+            </button>
+        </div>
+
+        <div 
+            id="videoList" 
+            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+        >
+            <!-- Videos will be dynamically added here -->
+        </div>
+    </div>
+
+    <script>
+        const apiKey = '[APIKEY]';
+        const videoList = document.getElementById('videoList');
+        const channelIdInput = document.getElementById('channelIdInput');
+        const searchButton = document.getElementById('searchButton');
+        const fetchVideosButton = document.getElementById('fetchVideosButton');
+        const showStoredVideosButton = document.getElementById('showStoredVideosButton');
+
+        // Predefined popular technology channels
+        const popularTechChannels = [
+            'UCX_2y3MjAH9iu7MzR6aaXVQ', // Marques Brownlee (MKBHD)
+            'UCBJycsmduvRzWz1zZbdxgvw', // Linus Tech Tips
+            'UCRg2tMX0eTqNLkIvk7aAXMw', // Unbox Therapy
+            'UCJ6td3SteGPf5X1SkNIzNOg', // FreeTech
+            'UCupvZG-5ko_eiXAupbDfxWw', // CBS News
+            'UCXuqSBlHAE6Xw-yeJa0Tunw', // Linus Tech Tips
+            'UC04GWKPbbCXhfY7-pIlVf-Q', // NASA Jet Propulsion Laboratory
+            'UCZYTClx2T1of7BRZ86-8fow', // SciShow
+            'UC1yBKRuGpC1tSM73A0ZjYjQ', // National Geographic
+            'UCwmZiChSm48kzr-NHAQpOFQ', // Khan Academy
+        ];
+
+        // Function to create video card
+        function createVideoCard(video) {
+            const card = document.createElement('div');
+            card.classList.add(
+                'video-card', 
+                'bg-white', 
+                'rounded-lg', 
+                'overflow-hidden', 
+                'shadow-lg', 
+                'transform', 
+                'transition', 
+                'duration-300', 
+                'hover:scale-105'
+            );
+
+            card.innerHTML = `
+                <img 
+                    src="${video.thumbnail}" 
+                    alt="${video.title}" 
+                    class="w-full h-48 object-cover"
+                >
+                <div class="p-4">
+                    <h3 class="font-bold text-lg mb-2 truncate">${video.title}</h3>
+                    <div class="text-sm text-gray-600 mb-2">
+                        <p>Published: ${video.date}</p>
+                        <p>Views: ${video.views}</p>
+                        <p>Likes: ${video.likes}</p>
+                    </div>
+                    <div class="flex justify-between">
+                        <a 
+                            href="https://www.youtube.com/watch?v=${video.videoId}" 
+                            target="_blank" 
+                            class="text-blue-500 hover:text-blue-700"
+                        >
+                            Watch Video
+                        </a>
+                        <button 
+                            onclick="deleteVideo('${video.videoId}')" 
+                            class="text-red-500 hover:text-red-700"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // Function to fetch videos for multiple channels
+        async function fetchMultipleChannelVideos(channels) {
+            videoList.innerHTML = '<p class="text-center text-xl">Loading videos...</p>';
+            const allVideos = [];
+
+            try {
+                for (const channelId of channels) {
+                    const searchUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&channelId=${channelId}&part=snippet&type=video&maxResults=5`;
+                    const searchResponse = await fetch(searchUrl);
+                    const searchData = await searchResponse.json();
+
+                    for (const item of searchData.items) {
+                        const videoId = item.id.videoId;
+                        const statsUrl = `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${videoId}&part=statistics`;
+                        
+                        const statsResponse = await fetch(statsUrl);
+                        const statsData = await statsResponse.json();
+                        const stats = statsData.items[0].statistics;
+
+                        const videoData = {
+                            title: item.snippet.title,
+                            videoId: videoId,
+                            date: new Date(item.snippet.publishedAt).toLocaleDateString(),
+                            likes: stats.likeCount || 'N/A',
+                            dislikes: stats.dislikeCount || 'N/A',
+                            views: stats.viewCount || 'N/A',
+                            thumbnail: item.snippet.thumbnails.high.url
+                        };
+
+                        // Store video in database
+                        await storeVideoData(videoData);
+                        allVideos.push(videoData);
+                    }
+                }
+
+                // Render videos
+                videoList.innerHTML = ''; 
+                allVideos.forEach(video => {
+                    const videoCard = createVideoCard(video);
+                    videoList.appendChild(videoCard);
+                });
+
+            } catch (error) {
+                console.error('Error fetching videos:', error);
+                videoList.innerHTML = `<p class="text-center text-red-500">Error: ${error.message}</p>`;
+            }
+        }
+
+        // Store video data
+        async function storeVideoData(videoData) {
+            try {
+                const response = await fetch('http://localhost:3000/api/storeVideo', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(videoData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('Error storing video data:', error);
+            }
+        }
+
+        // Fetch videos for a specific channel
+        async function fetchChannelVideos() {
+            const channelId = channelIdInput.value.trim();
+            if (!channelId) {
+                alert('Please enter a valid Channel ID');
+                return;
+            }
+
+            await fetchMultipleChannelVideos([channelId]);
+        }
+
+        // Fetch stored videos
+        async function fetchStoredVideos() {
+            try {
+                const response = await fetch('http://localhost:3000/api/videos', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const videos = await response.json();
+
+                videoList.innerHTML = ''; 
+                if (videos.length === 0) {
+                    videoList.innerHTML = '<p class="text-center text-xl">No videos stored</p>';
+                    return;
+                }
+
+                videos.forEach(video => {
+                    const videoCard = createVideoCard(video);
+                    videoList.appendChild(videoCard);
+                });
+            } catch (error) {
+                console.error('Error fetching stored videos:', error);
+                videoList.innerHTML = `
+                    <div class="col-span-full text-center text-red-500">
+                        <p>Error fetching videos:</p>
+                        <p>${error.message}</p>
+                        <p>Please ensure the backend server is running</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Delete video
+        async function deleteVideo(videoId) {
+            try {
+                const response = await fetch(`http://localhost:3000/api/deleteVideo/${videoId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                // Refresh the video list
+                fetchStoredVideos();
+            } catch (error) {
+                console.error('Error deleting video:', error);
+            }
+        }
+
+        // Event Listeners
+        searchButton.addEventListener('click', fetchChannelVideos);
+        fetchVideosButton.addEventListener('click', () => fetchMultipleChannelVideos(popularTechChannels));
+        showStoredVideosButton.addEventListener('click', fetchStoredVideos);
+
+        // Initial load with popular tech channels
+        document.addEventListener('DOMContentLoaded', () => fetchMultipleChannelVideos(popularTechChannels));
+    </script>
+</body>
+</html>
