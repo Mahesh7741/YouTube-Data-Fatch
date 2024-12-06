@@ -20,9 +20,9 @@ Welcome to **YouTube Video Explorer & Manager**! This full-stack application all
 
 ### 🎥 Demo Video
 
-![Screenshot 2024-12-07 000435] https://github.com/user-attachments/assets/b8171805-a148-4f1c-af37-6863640de492
+https://github.com/user-attachments/assets/b8171805-a148-4f1c-af37-6863640de492
 
-[![Demo Video](https://github.com/user-attachments/assets/e45d4bb5-c6e8-4f1d-8e4b-161d5282d820)]([Assets/20241206234201.mp4](https://github.com/user-attachments/assets/b8171805-a148-4f1c-af37-6863640de492)) 
+
 ---
 
 ## 🛠️ Tech Stack
